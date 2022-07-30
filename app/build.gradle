@@ -84,4 +84,8 @@ dependencies {
     androidTestImplementation libs.test.espresso.core
     androidTestImplementation libs.compose.ui.test.junit4
     debugImplementation libs.compose.ui.tooling
+
+    // Networking
+    implementation 'com.android.volley:volley:1.2.1'
+    implementation 'com.google.code.gson:gson:2.9.0'
 }

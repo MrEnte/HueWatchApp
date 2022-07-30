@@ -15,6 +15,7 @@
  */
 package com.example.android.wearable.composestarter.presentation
 
+import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -22,16 +23,15 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Devices
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.Dp
 import androidx.wear.compose.material.*
-import com.example.android.wearable.composestarter.R
+import com.android.volley.toolbox.Volley
 import com.example.android.wearable.composestarter.presentation.theme.WearAppTheme
 
 /**
@@ -45,46 +45,97 @@ import com.example.android.wearable.composestarter.presentation.theme.WearAppThe
  * back action). For more information, go here:
  * https://developer.android.com/reference/kotlin/androidx/wear/compose/navigation/package-summary
  */
+val BRIDGE_API = "0.0.0.0"
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         setContent {
-            WearApp("Android")
+            WearApp()
         }
     }
 }
 
+class TimeResponse {
+    var datetime: String? = ""
+}
+
 @Composable
-fun WearApp(greetingName: String) {
+fun WearApp() {
+    val ctx = LocalContext.current
 
     WearAppTheme {
-        /* If you have enough items in your list, use [ScalingLazyColumn] which is an optimized
-         * version of LazyColumn for wear devices with some added features. For more information,
-         * see d.android.com/wear/compose.
-         */
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .background(MaterialTheme.colors.background)
                 .selectableGroup(),
+            horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            BrightnessSlider(5f)
+            var brightnessLevel by remember { mutableStateOf(50f) }
+            var lightIsOn by remember { mutableStateOf(false) }
+
+            LightToggle(
+                lightIsOn,
+                onToggleClick = {
+                    kotlin.run {
+                        lightIsOn = it
+                        getDateTime(ctx, lightIsOn)
+                    }
+                }
+            )
+
+            if (lightIsOn) {
+                BrightnessSlider(brightnessLevel, onBrightnessLevelChange = { brightnessLevel = it })
+            }
+
+            println(brightnessLevel)
+            println(lightIsOn)
         }
     }
 }
 
 @Composable
-fun BrightnessSlider(brightnessLevel: Float) {
-    var value by remember { mutableStateOf(brightnessLevel) }
+fun BrightnessSlider(brightnessLevel: Float, onBrightnessLevelChange: (Float) -> Unit) {
     InlineSlider(
-        value = value ,
-        onValueChange = { value = it },
+        value = brightnessLevel,
+        onValueChange = onBrightnessLevelChange,
         increaseIcon = { Icon(InlineSliderDefaults.Increase, "Increase") },
         decreaseIcon = { Icon(InlineSliderDefaults.Decrease, "Decrease") },
-        valueRange = 0f..10f,
+        valueRange = 0f..100f,
         steps = 9,
-        segmented = false
+        segmented = false,
+        modifier = Modifier.padding(Dp(16f))
     )
+}
+
+@Composable
+fun LightToggle(isOn: Boolean, onToggleClick: (Boolean) -> Unit) {
+    ToggleButton(
+        checked = isOn,
+        onCheckedChange = onToggleClick,
+        modifier = Modifier.padding(Dp(16f))
+    ) {
+        if (isOn) {
+            Text(text = "On")
+        } else {
+            Text(text = "Off")
+        }
+    }
+}
+
+private fun getDateTime(ctx: Context, toggleState: Boolean) {
+    // TODO use hue api
+    val queue = Volley.newRequestQueue(ctx)
+    val url = "http://worldtimeapi.org/api/timezone/Europe/Berlin"
+    val timeRequest = GsonRequest(
+        url,
+        listener = { response -> println(response.datetime) },
+        errorListener = { println("Did not work!") },
+        clazz = TimeResponse::class.java,
+        headers = null
+    )
+    queue.add(timeRequest)
 }
