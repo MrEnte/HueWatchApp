@@ -113,17 +113,23 @@ fun BrightnessSlider(brightnessLevel: Float, onBrightnessLevelChange: (Float) ->
 
 @Composable
 fun LightToggle(isOn: Boolean, onToggleClick: (Boolean) -> Unit) {
-    ToggleButton(
+    var label = "Turn Light on"
+    if (isOn) {
+        label = "Turn Light Off"
+    }
+
+    ToggleChip(
+        label = { Text(text = label) },
         checked = isOn,
         onCheckedChange = onToggleClick,
-        modifier = Modifier.padding(Dp(16f))
-    ) {
-        if (isOn) {
-            Text(text = "On")
-        } else {
-            Text(text = "Off")
-        }
-    }
+        modifier = Modifier.padding(Dp(16f)),
+        toggleControl = {
+            Icon(
+                imageVector = ToggleChipDefaults.switchIcon(checked = isOn),
+                contentDescription = if (isOn) "On" else "Off",
+            )
+        },
+    )
 }
 
 private fun getDateTime(ctx: Context, toggleState: Boolean) {
