@@ -22,7 +22,7 @@ class GsonRequest<T>(
     private val clazz: Class<T>,
     private val headers: MutableMap<String, String>?,
     private val listener: Response.Listener<T>,
-    errorListener: Response.ErrorListener
+    errorListener: Response.ErrorListener,
 ) : Request<T>(Method.GET, url, errorListener) {
     private val gson = Gson()
 
@@ -34,10 +34,12 @@ class GsonRequest<T>(
         return try {
             val json = String(
                 response?.data ?: ByteArray(0),
-                Charset.forName(HttpHeaderParser.parseCharset(response?.headers)))
+                Charset.forName(HttpHeaderParser.parseCharset(response?.headers))
+            )
             Response.success(
                 gson.fromJson(json, clazz),
-                HttpHeaderParser.parseCacheHeaders(response))
+                HttpHeaderParser.parseCacheHeaders(response)
+            )
         } catch (e: UnsupportedEncodingException) {
             Response.error(ParseError(e))
         } catch (e: JsonSyntaxException) {

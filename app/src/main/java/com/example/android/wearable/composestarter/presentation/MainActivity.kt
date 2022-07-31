@@ -17,6 +17,7 @@ package com.example.android.wearable.composestarter.presentation
 
 import android.content.Context
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
@@ -31,8 +32,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
 import androidx.wear.compose.material.*
+import com.android.volley.Response
+import com.android.volley.toolbox.JsonObjectRequest
 import com.android.volley.toolbox.Volley
 import com.example.android.wearable.composestarter.presentation.theme.WearAppTheme
+import org.json.JSONException
+import org.json.JSONObject
+import java.io.UnsupportedEncodingException
+
 
 /**
  * Simple "Hello, World" app meant as a starting point for a new project using Compose for Wear OS.
@@ -45,11 +52,15 @@ import com.example.android.wearable.composestarter.presentation.theme.WearAppThe
  * back action). For more information, go here:
  * https://developer.android.com/reference/kotlin/androidx/wear/compose/navigation/package-summary
  */
-val BRIDGE_API = "0.0.0.0"
+const val BRIDGE_API = "192.168.0.144"
+const val HUE_APPLICATION_KEY = "JDbjnj9gCWzwF83ECLt5hHltW-2pj8C1In6tUZCC"
+
+const val BASE_URL = "https://$BRIDGE_API/clip/v2"
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        NukeSSLCerts.nuke()
 
         setContent {
             WearApp()
@@ -82,14 +93,16 @@ fun WearApp() {
                 onToggleClick = {
                     kotlin.run {
                         lightIsOn = it
-                        getDateTime(ctx, lightIsOn)
+                        toggleLight(ctx, lightIsOn)
                     }
                 }
             )
 
-            if (lightIsOn) {
-                BrightnessSlider(brightnessLevel, onBrightnessLevelChange = { brightnessLevel = it })
-            }
+//            if (lightIsOn) {
+//                BrightnessSlider(
+//                    brightnessLevel,
+//                    onBrightnessLevelChange = { brightnessLevel = it })
+//            }
 
             println(brightnessLevel)
             println(lightIsOn)
@@ -132,16 +145,51 @@ fun LightToggle(isOn: Boolean, onToggleClick: (Boolean) -> Unit) {
     )
 }
 
-private fun getDateTime(ctx: Context, toggleState: Boolean) {
-    // TODO use hue api
+private fun toggleLight(ctx: Context, toggleState: Boolean) {
+    val url = "$BASE_URL/resource/grouped_light/2b372bb0-cc98-4b0d-bd57-0bd1218de179"
     val queue = Volley.newRequestQueue(ctx)
-    val url = "http://worldtimeapi.org/api/timezone/Europe/Berlin"
-    val timeRequest = GsonRequest(
-        url,
-        listener = { response -> println(response.datetime) },
-        errorListener = { println("Did not work!") },
-        clazz = TimeResponse::class.java,
-        headers = null
-    )
-    queue.add(timeRequest)
+
+    val lightStateJson = JSONObject()
+    try {
+        lightStateJson.put("on", toggleState)
+    } catch (e: JSONException) {
+        println(e)
+    }
+
+    val putData = JSONObject()
+    try {
+        putData.put("on", lightStateJson)
+    } catch (e: JSONException) {
+        println(e)
+    }
+    val putRequest: JsonObjectRequest =
+        object : JsonObjectRequest(
+            Method.PUT, url, putData,
+            Response.Listener { response ->
+                Log.d("Response", response.toString())
+            },
+            Response.ErrorListener { error ->
+                Log.d("Error.Response", error.toString())
+            }
+        ) {
+            override fun getHeaders(): Map<String, String> {
+                val headers: MutableMap<String, String> = HashMap()
+                headers["Content-Type"] = "application/json"
+                headers["Accept"] = "application/json"
+                headers["hue-application-key"] = HUE_APPLICATION_KEY
+
+                return headers
+            }
+
+            override fun getBody(): ByteArray? {
+                try {
+                    Log.i("json", putData.toString())
+                    return putData.toString().toByteArray(charset("UTF-8"))
+                } catch (e: UnsupportedEncodingException) {
+                    e.printStackTrace()
+                }
+                return null
+            }
+        }
+    queue.add(putRequest)
 }
