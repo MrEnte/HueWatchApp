@@ -32,7 +32,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
 import androidx.wear.compose.material.*
+import com.android.volley.Request
+import com.android.volley.RequestQueue
 import com.android.volley.Response
+import com.android.volley.toolbox.JsonArrayRequest
 import com.android.volley.toolbox.JsonObjectRequest
 import com.android.volley.toolbox.Volley
 import com.example.android.wearable.composestarter.presentation.theme.WearAppTheme
@@ -58,6 +61,7 @@ const val HUE_APPLICATION_KEY = "JDbjnj9gCWzwF83ECLt5hHltW-2pj8C1In6tUZCC"
 const val BASE_URL = "https://$BRIDGE_API/clip/v2"
 
 class MainActivity : ComponentActivity() {
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         NukeSSLCerts.nuke()
@@ -68,13 +72,12 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-class TimeResponse {
-    var datetime: String? = ""
-}
-
 @Composable
 fun WearApp() {
     val ctx = LocalContext.current
+    var rooms by remember { mutableStateOf(RoomResponse()) }
+
+    getRooms(ctx = ctx, listener = { response -> rooms = response })
 
     WearAppTheme {
         Column(
@@ -85,27 +88,35 @@ fun WearApp() {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            var brightnessLevel by remember { mutableStateOf(50f) }
-            var lightIsOn by remember { mutableStateOf(false) }
+            LightToggleWrapper(ctx = ctx, rooms = rooms)
 
-            LightToggle(
-                lightIsOn,
-                onToggleClick = {
-                    kotlin.run {
-                        lightIsOn = it
-                        toggleLight(ctx, lightIsOn)
-                    }
-                }
-            )
-
+//            var brightnessLevel by remember { mutableStateOf(50f) }
+//            var lightIsOn by remember { mutableStateOf(false) }
+//            LightToggle(
+//                isOn = lightIsOn,
+//                name = "Light",
+//                onToggleClick = {
+//                    kotlin.run {
+//                        lightIsOn = it
+//                        toggleLight(ctx, lightIsOn)
+//                    }
+//                }
+//            )
+//
+//
 //            if (lightIsOn) {
 //                BrightnessSlider(
 //                    brightnessLevel,
-//                    onBrightnessLevelChange = { brightnessLevel = it })
+//                    onBrightnessLevelChange = {
+//                        kotlin.run {
+//                            brightnessLevel = it
+//                            changeBrightnessLevel(ctx, brightnessLevel)
+//                        }
+//                    })
 //            }
-
-            println(brightnessLevel)
-            println(lightIsOn)
+//
+//            println(brightnessLevel)
+//            println(lightIsOn)
         }
     }
 }
@@ -125,10 +136,28 @@ fun BrightnessSlider(brightnessLevel: Float, onBrightnessLevelChange: (Float) ->
 }
 
 @Composable
-fun LightToggle(isOn: Boolean, onToggleClick: (Boolean) -> Unit) {
-    var label = "Turn Light on"
+fun LightToggleWrapper(rooms: RoomResponse, ctx: Context) {
+    for (room in rooms.data) {
+        var lightIsOn by remember { mutableStateOf(false) }
+
+        LightToggle(
+            isOn = lightIsOn,
+            name = room.getName(),
+            onToggleClick = {
+                kotlin.run {
+                    lightIsOn = it
+                    toggleLight(ctx, lightIsOn, room.services[0].rid)
+                }
+            }
+        )
+    }
+}
+
+@Composable
+fun LightToggle(isOn: Boolean, name: String, onToggleClick: (Boolean) -> Unit) {
+    var label = "Turn $name On "
     if (isOn) {
-        label = "Turn Light Off"
+        label = "Turn $name Off"
     }
 
     ToggleChip(
@@ -145,8 +174,8 @@ fun LightToggle(isOn: Boolean, onToggleClick: (Boolean) -> Unit) {
     )
 }
 
-private fun toggleLight(ctx: Context, toggleState: Boolean) {
-    val url = "$BASE_URL/resource/grouped_light/2b372bb0-cc98-4b0d-bd57-0bd1218de179"
+private fun toggleLight(ctx: Context, toggleState: Boolean, id: String) {
+    val url = "$BASE_URL/resource/grouped_light/$id"
     val queue = Volley.newRequestQueue(ctx)
 
     val lightStateJson = JSONObject()
@@ -192,4 +221,95 @@ private fun toggleLight(ctx: Context, toggleState: Boolean) {
             }
         }
     queue.add(putRequest)
+}
+
+private fun changeBrightnessLevel(ctx: Context, brightnessLevel: Float) {
+    val url = "$BASE_URL/resource/grouped_light/2b372bb0-cc98-4b0d-bd57-0bd1218de179"
+    val queue = Volley.newRequestQueue(ctx)
+
+    val dimmingObject = JSONObject()
+    try {
+        dimmingObject.put("brightness", brightnessLevel)
+    } catch (e: JSONException) {
+        println(e)
+    }
+
+    val putData = JSONObject()
+    try {
+        putData.put("dimming", dimmingObject)
+    } catch (e: JSONException) {
+        println(e)
+    }
+    val putRequest: JsonObjectRequest =
+        object : JsonObjectRequest(
+            Method.PUT, url, putData,
+            Response.Listener { response ->
+                Log.d("Response", response.toString())
+            },
+            Response.ErrorListener { error ->
+                Log.d("Error.Response", error.toString())
+            }
+        ) {
+            override fun getHeaders(): Map<String, String> {
+                val headers: MutableMap<String, String> = HashMap()
+                headers["Content-Type"] = "application/json"
+                headers["Accept"] = "application/json"
+                headers["hue-application-key"] = HUE_APPLICATION_KEY
+
+                return headers
+            }
+
+            override fun getBody(): ByteArray? {
+                try {
+                    Log.i("json", putData.toString())
+                    return putData.toString().toByteArray(charset("UTF-8"))
+                } catch (e: UnsupportedEncodingException) {
+                    e.printStackTrace()
+                }
+                return null
+            }
+        }
+    queue.add(putRequest)
+}
+
+class MetaData {
+    var name: String = "";
+}
+
+class Services {
+    var rid: String = "";
+}
+
+class Room {
+    var id: String = "";
+    var metadata: MetaData = MetaData();
+    var services: List<Services> = List(1) { Services() };
+
+    fun getName(): String {
+        return metadata.name
+    }
+}
+
+class RoomResponse {
+    var data: List<Room> = List(1) { Room() }
+}
+
+private fun getRooms(ctx: Context, listener: Response.Listener<RoomResponse>) {
+    val queue = Volley.newRequestQueue(ctx)
+    val url = "$BASE_URL/resource/room"
+
+    val headers: MutableMap<String, String> = HashMap()
+    headers["Content-Type"] = "application/json"
+    headers["Accept"] = "application/json"
+    headers["hue-application-key"] = HUE_APPLICATION_KEY
+
+
+    val roomRequest = GsonRequest(
+        url = url,
+        clazz = RoomResponse::class.java,
+        headers = headers,
+        listener = listener,
+        errorListener = { error -> println(error) })
+
+    queue.add(roomRequest)
 }
