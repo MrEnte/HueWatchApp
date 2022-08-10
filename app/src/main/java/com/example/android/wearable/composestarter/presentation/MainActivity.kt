@@ -16,7 +16,14 @@
 package com.example.android.wearable.composestarter.presentation
 
 import android.content.Context
+import android.content.Intent
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
+import android.net.NetworkRequest
 import android.os.Bundle
+import android.provider.Settings
+import android.provider.Settings.ACTION_MANAGE_WRITE_SETTINGS
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -32,10 +39,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
 import androidx.wear.compose.material.*
-import com.android.volley.Request
-import com.android.volley.RequestQueue
 import com.android.volley.Response
-import com.android.volley.toolbox.JsonArrayRequest
 import com.android.volley.toolbox.JsonObjectRequest
 import com.android.volley.toolbox.Volley
 import com.example.android.wearable.composestarter.presentation.theme.WearAppTheme
@@ -66,10 +70,43 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         NukeSSLCerts.nuke()
 
-        setContent {
-            WearApp()
+        if (Settings.System.canWrite(this)) {
+
+            connectToAvailableWiFi(ctx = this)
+
+            setContent {
+                WearApp()
+            }
+        } else {
+            val intent = Intent()
+            intent.setAction(ACTION_MANAGE_WRITE_SETTINGS)
+            startActivity(intent)
         }
     }
+}
+
+fun connectToAvailableWiFi(ctx: Context) {
+    val connectivityManager =
+        ctx.getSystemService(ConnectivityManager::class.java) as ConnectivityManager
+
+    val callback = object : ConnectivityManager.NetworkCallback() {
+        override fun onAvailable(network: Network) {
+            super.onAvailable(network)
+            // The Wi-Fi network has been acquired, bind it to use this network by default
+            connectivityManager.bindProcessToNetwork(network)
+        }
+
+        override fun onLost(network: Network) {
+            super.onLost(network)
+            // The Wi-Fi network has been disconnected
+        }
+    }
+
+    connectivityManager.requestNetwork(
+        NetworkRequest.Builder().addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
+            .build(),
+        callback
+    )
 }
 
 @Composable
@@ -88,7 +125,11 @@ fun WearApp() {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            LightToggleWrapper(ctx = ctx, rooms = rooms)
+            if (rooms.data[0].getName() == "") {
+                Text(text = "Loading")
+            } else {
+                LightToggleWrapper(ctx = ctx, rooms = rooms)
+            }
 
 //            var brightnessLevel by remember { mutableStateOf(50f) }
 //            var lightIsOn by remember { mutableStateOf(false) }
