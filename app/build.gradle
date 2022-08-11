@@ -59,6 +59,7 @@ android {
 }
 
 dependencies {
+    def wear_compose_version = "1.0.0"
     // General compose dependencies
     implementation libs.androidx.activity.compose
     implementation libs.compose.ui.tooling.preview
@@ -77,6 +78,7 @@ dependencies {
     // If you are using Compose Navigation, use the Wear OS version (NOT the
     // androidx.navigation:navigation-compose version), that is, uncomment the line below.
     // implementation libs.wear.compose.navigation
+    implementation "androidx.wear.compose:compose-navigation:$wear_compose_version"
 
     // Testing
     testImplementation libs.junit
