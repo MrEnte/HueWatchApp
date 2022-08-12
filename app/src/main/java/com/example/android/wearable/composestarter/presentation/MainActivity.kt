@@ -113,29 +113,29 @@ fun WearApp(navController: NavController) {
     getRooms(ctx = ctx, listener = { response -> rooms = response })
 
     WearAppTheme {
-        if (rooms.data[0].getName() == "") {
-            Text(text = "Loading")
-        } else {
-            RoomNavigationButtons(rooms = rooms, navController = navController)
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .selectableGroup(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            if (rooms.data[0].getName() == "") {
+                Text(text = "Loading")
+            } else {
+                RoomNavigationButtons(rooms = rooms, navController = navController)
+            }
         }
     }
 }
 
 @Composable
 fun RoomNavigationButtons(rooms: RoomResponse, navController: NavController) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .selectableGroup(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        for (room in rooms.data) {
-            Button(
-                modifier = Modifier.padding(Dp(16f)),
-                onClick = { navController.navigate(Screen.DetailScreen.withArgs(room.services[0].rid)) }) {
-                Text(text = room.getName())
-            }
+    for (room in rooms.data) {
+        Button(
+            modifier = Modifier.padding(Dp(16f)),
+            onClick = { navController.navigate(Screen.DetailScreen.withArgs(room.services[0].rid)) }) {
+            Text(text = room.getName())
         }
     }
 }
