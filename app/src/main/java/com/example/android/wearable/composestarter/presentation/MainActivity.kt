@@ -26,10 +26,7 @@ import android.provider.Settings.ACTION_MANAGE_WRITE_SETTINGS
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -120,22 +117,35 @@ fun WearApp(navController: NavController) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            if (rooms.data[0].getName() == "") {
-                Text(text = "Loading")
-            } else {
-                RoomNavigationButtons(rooms = rooms, navController = navController)
-            }
+            RoomNavigationButtons(rooms = rooms, navController = navController)
         }
     }
 }
 
 @Composable
 fun RoomNavigationButtons(rooms: RoomResponse, navController: NavController) {
-    for (room in rooms.data) {
-        Button(
-            modifier = Modifier.padding(Dp(16f)),
-            onClick = { navController.navigate(Screen.DetailScreen.withArgs(room.services[0].rid)) }) {
-            Text(text = room.getName())
+    ScalingLazyColumn(
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        item {
+            ListHeader {
+                Text(text = "Rooms")
+            }
+        }
+        if (rooms.data[0].getName() == "") {
+            item {
+                Text(text = "No rooms found")
+            }
+        } else {
+            for (room in rooms.data) {
+                item {
+                    Button(
+                        modifier = Modifier.fillMaxWidth(0.625f),
+                        onClick = { navController.navigate(Screen.DetailScreen.withArgs(room.services[0].rid)) }) {
+                        Text(text = room.getName())
+                    }
+                }
+            }
         }
     }
 }

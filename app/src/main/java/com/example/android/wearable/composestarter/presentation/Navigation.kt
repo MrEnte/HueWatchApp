@@ -6,11 +6,15 @@ import androidx.navigation.navArgument
 import androidx.wear.compose.navigation.SwipeDismissableNavHost
 import androidx.wear.compose.navigation.composable
 import androidx.wear.compose.navigation.rememberSwipeDismissableNavController
+import com.example.android.wearable.composestarter.presentation.theme.WearAppTheme
 
 @Composable
 fun Navigation() {
     val navController = rememberSwipeDismissableNavController()
-    SwipeDismissableNavHost(navController = navController, startDestination = Screen.MainScreen.route) {
+    SwipeDismissableNavHost(
+        navController = navController,
+        startDestination = Screen.MainScreen.route
+    ) {
         composable(route = Screen.MainScreen.route) {
             WearApp(navController)
         }
@@ -18,8 +22,8 @@ fun Navigation() {
             navArgument("roomId") {
                 type = NavType.StringType
             }
-        )){ entry ->
-            entry.arguments?.getString("roomId")?.let { RoomSettings(roomId = it) }
+        )) { entry ->
+            entry.arguments?.getString("roomId")?.let { WearAppTheme { RoomSettings(roomId = it) } }
         }
     }
 }
